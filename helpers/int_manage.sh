@@ -1,3 +1,3 @@
 int_man(){
-  python3 ~/moongen/libmoon/deps/dpdk/usertools/dpdk-devbind.py $@
+  sudo python3 ~/moongen/libmoon/deps/dpdk/usertools/dpdk-devbind.py $@
 }
