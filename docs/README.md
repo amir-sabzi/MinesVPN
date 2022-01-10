@@ -28,4 +28,19 @@ To quickly chekc almost all information about NIC status and details, you can us
 sudo lspci -v | grep "Ethernet" -A 10
 ```
 Although it's possible to use `` ifconfig `` to simply check the status of interfaces and their addresses, sometimes ``ip a`` can provide more information.\
-I wrote a bash script that can make it easier to check interfaces and setup them initially.
+I wrote a bash script that can make it easier to check interfaces and setup them initially. ** add address of the file**
+
+## Building MoonGen
+When building MoonGen, if you encounter the following error:
+```
+error while loading shared libraries: libtbbmalloc.so.2: cannot open shared object file: No such file or directory
+```
+Modify the `` CMakeLists.txt `` and change the libraries as what follows:
+```
+set(libraries
+-Wl, –disable-new-dtags
+-Wl, –whole-archive
+moon
+)
+```
+Don't forgot to build from scratch.
