@@ -23,3 +23,9 @@ I will use this .md file as documentation of the project. I chose git readme for
     * enp8s0f0: NULL
     * enp8s0f1: NULL
 ## Useful commands for experiments
+To quickly chekc almost all information about NIC status and details, you can use following command:
+```
+sudo lspci -v | grep "Ethernet" -A 10
+```
+Although it's possible to use `` ifconfig `` to simply check the status of interfaces and their addresses, sometimes ``ip a`` can provide more information.\
+I wrote a bash script that can make it easier to check interfaces and setup them initially.
