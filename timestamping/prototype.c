@@ -35,7 +35,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   inf->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (inf->fd < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_server: socket failed: %sn",
+    fprintf(stderr, "setup_udp_server: socket failed: %s\n",
             strerror(inf->err_no));
     return inf->fd;
   }
@@ -61,7 +61,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
                      sizeof timestampOn);
   if (r < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_server: setsockopt failed: %sn",
+    fprintf(stderr, "setup_udp_server: setsockopt failed: %s\n",
             strerror(inf->err_no));
     return r;
   }
@@ -72,7 +72,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   r = setsockopt(inf->fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof on);
   if (r < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_server: setsockopt2 failed: %sn",
+    fprintf(stderr, "setup_udp_server: setsockopt2 failed: %s\n",
             strerror(inf->err_no));
     return r;
   }
@@ -83,7 +83,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   r = bind(inf->fd, (struct sockaddr *)&inf->local, sizeof inf->local);
   if (r < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_server: bind failed: %sn",
+    fprintf(stderr, "setup_udp_server: bind failed: %s\n",
             strerror(inf->err_no));
     return r;
   }
@@ -98,7 +98,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
   inf->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (inf->fd < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_client: socket failed: %sn",
+    fprintf(stderr, "setup_udp_client: socket failed: %s\n",
             strerror(inf->err_no));
     return inf->fd;
   }
@@ -113,7 +113,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
                      sizeof timestampOn);
   if (r < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "setup_udp_server: setsockopt failed: %sn",
+    fprintf(stderr, "setup_udp_server: setsockopt failed: %s\n",
             strerror(inf->err_no));
     return r;
   }
@@ -123,7 +123,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
                                      .sin_port = htons((uint16_t)port)};
   r = inet_aton(address, &inf->remote.sin_addr);
   if (r == 0) {
-    fprintf(stderr, "setup_udp_client: inet_aton failedn");
+    fprintf(stderr, "setup_udp_client: inet_aton failed\n");
     inf->err_no = 0;
     return -1;
   }
@@ -140,7 +140,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
 // are passed in ts[0]. Hardware timestamps are passed in ts[2].
 static void handle_scm_timestamping(struct scm_timestamping *ts) {
   for (size_t i = 0; i < sizeof ts->ts / sizeof *ts->ts; i++) {
-    printf("timestamp: %lld.%.9ldsn", (long long)ts->ts[i].tv_sec,
+    printf("timestamp: %lld.%.9lds\n", (long long)ts->ts[i].tv_sec,
            ts->ts[i].tv_nsec);
   }
 }
@@ -149,13 +149,13 @@ static void handle_time(struct msghdr *msg) {
 
   for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(msg); cmsg;
        cmsg = CMSG_NXTHDR(msg, cmsg)) {
-    printf("level=%d, type=%d, len=%zun", cmsg->cmsg_level, cmsg->cmsg_type,
+    printf("level=%d, type=%d, len=%zu\n", cmsg->cmsg_level, cmsg->cmsg_type,
            cmsg->cmsg_len);
 
     if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
       struct sock_extended_err *ext =
           (struct sock_extended_err *)CMSG_DATA(cmsg);
-      printf("errno=%d, origin=%dn", ext->ee_errno, ext->ee_origin);
+      printf("errno=%d, origin=%d\n", ext->ee_errno, ext->ee_origin);
       continue;
     }
 
@@ -176,7 +176,7 @@ static void handle_time(struct msghdr *msg) {
       break;
     }
   }
-  printf("End messagesn");
+  printf("End messages\n");
 }
 
 static ssize_t udp_receive(socket_info *inf, char *buf, size_t len) {
@@ -193,7 +193,7 @@ static ssize_t udp_receive(socket_info *inf, char *buf, size_t len) {
 
   if (recv_len < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "udp_receive: recvfrom failed: %sn",
+    fprintf(stderr, "udp_receive: recvfrom failed: %s\n",
             strerror(inf->err_no));
   }
 
@@ -212,7 +212,7 @@ static ssize_t udp_send(socket_info *inf, char *buf, size_t len) {
   ssize_t send_len = sendmsg(inf->fd, &msg, 0);
   if (send_len < 0) {
     inf->err_no = errno;
-    fprintf(stderr, "udp_send: sendmsg failed: %sn", strerror(inf->err_no));
+    fprintf(stderr, "udp_send: sendmsg failed: %s\n", strerror(inf->err_no));
   }
 
   return send_len;
@@ -232,7 +232,7 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len) {
   if (recv_len < 0) {
     inf->err_no = errno;
     if (errno != EAGAIN) {
-      fprintf(stderr, "meq_receive: recvmsg failed: %sn",
+      fprintf(stderr, "meq_receive: recvmsg failed: %s\n",
               strerror(inf->err_no));
     }
     return recv_len;
@@ -283,7 +283,7 @@ static ssize_t generate_random_message(socket_info *inf, char *buf,
   size_t total = payload_len + sizeof *header;
 
   printf("uts%5" PRId64 ": kt=%" PRId64 ", ut=%" PRId64 ", sn=%" PRId64
-         ": s=%zun",
+         ": s=%zu\n",
          header->user_time_serialnum, header->kernel_time, header->user_time,
          header->serialnum, total);
 
@@ -327,7 +327,7 @@ static void receiver_loop(void) {
   }
 }
 
-#define USAGE "Usage: %s [-r | -s host]n"
+#define USAGE "Usage: %s [-r | -s host]\n"
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
