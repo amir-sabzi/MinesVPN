@@ -2,24 +2,24 @@
 I will use this .md file as documentation of the project. I chose git readme format because it available me to properly mention commands and write everything in the terminal.
 ## Useful information about testbed
 * Leap-417: 
-  * 1G NIC
+  * 1G NIC: Broadcom Inc. and subsidiaries NetXtreme BCM5720 2-port Gigabit Ethernet PCIe
     * eno1: 10.34.15.17
     * eno2: NULL
-  * 10G NIC
+  * 10G NIC: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 
     * enp66s0f0: 10.34.15.177
     * enp66s0f1: NULL
-  * 40G NIC
+  * 40G NIC: Intel Corporation Ethernet Controller XL710 for 40GbE QSFP+
     * enp8s0f0: NULL
     * enp8s0f1: NULL
 
 * Leap-418:
-  * 1G NIC
+  * 1G NIC: Broadcom Inc. and subsidiaries NetXtreme BCM5720 2-port Gigabit Ethernet PCIe
     * eno1: 10.34.15.18
     * eno2: NULL
-  * 10G NIC
+  * 10G NIC: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 
     * enp66s0f0: 10.34.15.188
     * enp66s0f1: NULL
-  * 40G NIC
+  * 40G NIC: Intel Corporation Ethernet Controller XL710 for 40GbE QSFP+
     * enp8s0f0: NULL
     * enp8s0f1: NULL
 ## Useful commands for experiments
