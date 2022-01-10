@@ -27,7 +27,7 @@ To quickly chekc almost all information about NIC status and details, you can us
 ```
 sudo lspci -v | grep "Ethernet" -A 10
 ```
-Although it's possible to use `` ifconfig `` to simply check the status of interfaces and their addresses, sometimes ``ip a`` can provide more information.
+Although it's possible to use `` ifconfig `` to simply check the status of interfaces and their addresses, sometimes ``ip a`` can provide more information.\
 To see whether an interface supporst hardware-timestamping or not, use the following command.
 ```
 ethtool -T <interface name>
