@@ -28,8 +28,9 @@ typedef struct {
   int64_t prev_serialnum;
 } socket_info;
 
-// they made the function static to limits its scope to this object file (not a big deal anyway)
-// this function get a port number, create a socket...
+/*  they made the function static to limits its scope to this object file (not a big deal anyway)
+ this function get a port number, create a socket...*/
+
 static int setup_udp_receiver(socket_info *inf, int port) {
   inf->port = port;
   inf->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -37,6 +38,25 @@ static int setup_udp_receiver(socket_info *inf, int port) {
     inf->err_no = errno;
     fprintf(stderr, "setup_udp_server: socket failed: %s\n",
             strerror(inf->err_no));
+    return inf->fd;
+  }
+
+  struct ifreq hwtstamp;
+  memset(&hwtstamp, 0, sizeof(hwtstamp));
+
+  struct hwtstamp_config hw_config; 
+  memset(&hw_config, 0, sizeof(hw_config));
+
+  char* nic_name = "eno1";
+  strcpy(hwtstamp.ifr_name, nic_name );
+  hwtstamp.ifr_data = (void *)&hw_config;
+  
+  hw_config.tx_type = HWTSTAMP_TX_ON;
+  hw_config.rx_filter = HWTSTAMP_FILTER_ALL;
+
+  if (ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp)<0) {
+    inf->err_no = errno;
+    fprintf(stderr, "ioctil failed: %s\n",strerror(inf->err_no));
     return inf->fd;
   }
   int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE;
@@ -104,6 +124,25 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
     inf->err_no = errno;
     fprintf(stderr, "setup_udp_client: socket failed: %s\n",
             strerror(inf->err_no));
+    return inf->fd;
+  }
+
+  struct ifreq hwtstamp;
+  memset(&hwtstamp, 0, sizeof(hwtstamp));
+
+  struct hwtstamp_config hw_config; 
+  memset(&hw_config, 0, sizeof(hw_config));
+
+  char* nic_name = "eno1";
+  strcpy(hwtstamp.ifr_name, nic_name );
+  hwtstamp.ifr_data = (void *)&hw_config;
+  
+  hw_config.tx_type = HWTSTAMP_TX_ON;
+  hw_config.rx_filter = HWTSTAMP_FILTER_ALL;
+
+  if (ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp)<0) {
+    inf->err_no = errno;
+    fprintf(stderr, "ioctil failed: %s\n",strerror(inf->err_no));
     return inf->fd;
   }
 
