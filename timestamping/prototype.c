@@ -153,7 +153,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
   hwtstamp.ifr_data = (void *)&hw_config;
   
   hw_config.tx_type = HWTSTAMP_TX_ON;
-  hw_config.rx_filter = HWTSTAMP_FILTER_ALL;
+  hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_L2_EVENT;
 
   if (ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp)<0) {
     inf->err_no = errno;
