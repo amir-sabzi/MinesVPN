@@ -60,18 +60,19 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   
    // IOCTL call:
    int ioctl_result = ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp);
+   printf("IOCTL output: %d\n",ioctl_result);
    if(ioctl_result < 0 ){
      inf->err_no = errno;
      fprintf(stderr, "ioctil failed: %s\n",strerror(inf->err_no));
      return ioctl_result;
    }
   /*--------------------------------------------------------------------*/
-  int timestampOn =
+  int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE;
       // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
       // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
-      SOF_TIMESTAMPING_TX_HARDWARE |// SOF_TIMESTAMPING_RAW_HARDWARE |
+      // SOF_TIMESTAMPING_TX_HARDWARE |// SOF_TIMESTAMPING_RAW_HARDWARE |
       // SOF_TIMESTAMPING_OPT_TSONLY |
-      0;
+      // 0;
   
   // SOL_SOCKET: I will use the explanation in the documentation to know what is this parameter.
   //    The level argument specifies the protocol level at which the option resides..
@@ -149,6 +150,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
   
    // IOCTL call:
    int ioctl_result = ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp);
+   printf("IOCTL output: %d\n",ioctl_result);
    if(ioctl_result < 0 ){
      inf->err_no = errno;
      fprintf(stderr, "ioctil failed: %s\n",strerror(inf->err_no));
@@ -156,12 +158,12 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
    }
   /*--------------------------------------------------------------------*/  
    
-   int timestampOn =
+   int timestampOn = SOF_TIMESTAMPING_TX_HARDWARE;
     //  SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
     // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
-      SOF_TIMESTAMPING_TX_HARDWARE | // SOF_TIMESTAMPING_RAW_HARDWARE |
+      // SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
       // SOF_TIMESTAMPING_OPT_TSONLY |
-      0;
+     //  0;
   int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
   if (r < 0) {
