@@ -53,12 +53,18 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   
   hw_config.tx_type = HWTSTAMP_TX_ON;
   hw_config.rx_filter = HWTSTAMP_FILTER_ALL;
-
-  if (ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp)<0) {
+  
+  // we use this IOCTL call to available hardware timestamping on the NIC.
+  int r =ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp);
+  if (r<0) {
     inf->err_no = errno;
     fprintf(stderr, "ioctil failed: %s\n",strerror(inf->err_no));
-    return inf->fd;
+    return r;  
   }
+  // Here we want to bind the socket to the interface. It helps me to compare different NICs.
+
+  // We use the ifreq struct defined and initialized above.
+
   int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE;
   /*
   int timestampOn =
@@ -81,7 +87,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   //
   // SO_TIMESTAMPING: take a look at this link https://www.kernel.org/doc/html/latest/networking/timestamping.html.
   // 
-  int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
+  r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
   if (r < 0) {
     inf->err_no = errno;
@@ -101,6 +107,15 @@ static int setup_udp_receiver(socket_info *inf, int port) {
     return r;
   }
   // We are not binding socket to specific port. It can accept connections from all IPs.
+  r = setsockopt(inf->fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&hwtstamp, sizeof(hwtstamp));
+  if (r<0){
+    inf->err_no = errno;
+    fprintf(stderr, "setup_udp_server: bind to interface failed: %s\n",
+            strerror(inf->err_no));
+    return r;
+
+  }
+  // binding to an address
   inf->local = (struct sockaddr_in){.sin_family = AF_INET,
                                     .sin_port = htons((uint16_t)port),
                                     .sin_addr.s_addr = htonl(INADDR_ANY)};
