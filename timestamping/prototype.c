@@ -40,6 +40,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
     return inf->fd;
   }
 
+
   int timestampOn =
       // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
       // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
@@ -48,7 +49,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
       0;
   
   // SOL_SOCKET: I will use the explanation in the documentation to know what is this parameter.
-  //    The level argument specifies the protocol level at which the option resides.
+  //    The level argument specifies the protocol level at which the option resides..
   //    To retrieve options at the socket level, specify the level argument as SOL_SOCKET.
   //    To retrieve options at other levels, supply the appropriate protocol number for the
   //    protocol controlling the option. For example, to indicate that an option will be 
