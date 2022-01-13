@@ -47,13 +47,13 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   struct hwtstamp_config hw_config; 
   memset(&hw_config, 0, sizeof(hw_config));
 
-  char* nic_name = "eno1";
+  char* nic_name = "enp66s0f0";
   strcpy(hwtstamp.ifr_name, nic_name );
   hwtstamp.ifr_data = (void *)&hw_config;
   
   hw_config.tx_type = HWTSTAMP_TX_ON;
-  hw_config.rx_filter = HWTSTAMP_FILTER_ALL;
-  
+  hw_config.rx_filter = HWTSTAMP_FILTER_NONE;
+  printf("%s\n", hwtstamp.ifr_name) ; 
   // we use this IOCTL call to available hardware timestamping on the NIC.
   int r =ioctl(inf->fd,SIOCSHWTSTAMP,&hwtstamp);
   if (r<0) {
