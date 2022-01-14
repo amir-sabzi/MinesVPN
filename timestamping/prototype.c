@@ -67,6 +67,18 @@ static int setup_udp_receiver(socket_info *inf, int port) {
      return ioctl_result;
    }
   /*--------------------------------------------------------------------*/
+
+   /*--------------Receiver: Binding the socket to an interface------------*/
+   // we already defined the ifreq struct with the interface name.
+   // here we use the same hwtstamp struct to bind to defined interface. 
+   int int_bind_result = setsockopt(inf->fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&hwtstamp, sizeof(hwtstamp));
+   if(int_bind_result < 0){
+     inf->err_no = errno;
+     fprintf(stderr, "setup_udp_server: bind to interface failed: %s\n",strerror(inf->err_no));
+     return int_bind_result; 
+   }
+   /*-----------------------------------------------------------------------*/
+
   int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
       // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
       // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
@@ -145,7 +157,21 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
      return ioctl_result;
    }
   /*--------------------------------------------------------------------*/  
-   
+
+
+   /*--------------Sender: Binding the socket to an interface------------*/
+   int int_bind_result = setsockopt(inf->fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&hwtstamp, sizeof(hwtstamp));
+   if(int_bind_result < 0){
+     inf->err_no = errno;
+     fprintf(stderr, "setup_udp_sender: bind to interface failed: %s\n",strerror(inf->err_no));
+     return int_bind_result; 
+   }
+   /*-----------------------------------------------------------------------*/
+
+  
+
+
+
    int timestampOn = SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
     //  SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
     // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
