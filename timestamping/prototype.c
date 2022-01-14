@@ -45,13 +45,13 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   struct hwtstamp_config hw_config;
   memset(&hw_config, 0, sizeof(hw_config));
 
-  hw_config.tx_type = HWTSTAMP_TX_OFF;
+  hw_config.tx_type = HWTSTAMP_TX_ON;
 
   // Timestamping filter: (CAUTION: should be available as an option for the NIC)
-   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V1_L4_EVENT;
+   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
-  char* interface_name = "eno1";
+  char* interface_name = "enp66s0f0";
   
   struct ifreq hwtstamp;
   memset(&hwtstamp, 0, sizeof(hwtstamp));
@@ -138,10 +138,10 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
   hw_config.tx_type = HWTSTAMP_TX_ON;
 
   // Timestamping filter: (CAUTION: should be available as an option for the NIC)
-   hw_config.rx_filter = HWTSTAMP_FILTER_NONE;
+   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
-  char* interface_name = "eno1";
+  char* interface_name = "enp66s0f0";
   
   struct ifreq hwtstamp;
   memset(&hwtstamp, 0, sizeof(hwtstamp));
