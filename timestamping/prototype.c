@@ -32,7 +32,7 @@ typedef struct {
 // this function get a port number, create a socket...
 static int setup_udp_receiver(socket_info *inf, int port) {
   inf->port = port;
-  inf->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  inf->fd = socket(AF_INET, SOCK_DGRAM, 17);
   if (inf->fd < 0) {
     inf->err_no = errno;
     fprintf(stderr, "setup_udp_server: socket failed: %s\n",
@@ -79,12 +79,12 @@ static int setup_udp_receiver(socket_info *inf, int port) {
    }
    /*-----------------------------------------------------------------------*/
 
-  int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
-      // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
-      // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
-      // SOF_TIMESTAMPING_TX_HARDWARE |// SOF_TIMESTAMPING_RAW_HARDWARE |
-      // SOF_TIMESTAMPING_OPT_TSONLY |
-      // 0;
+  int timestampOn = // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
+       SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
+       SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
+       SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
+       SOF_TIMESTAMPING_OPT_TSONLY |
+       0;
   
   int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
@@ -122,7 +122,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
 
 static int setup_udp_sender(socket_info *inf, int port, char *address) {
   inf->port = port;
-  inf->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  inf->fd = socket(AF_INET, SOCK_DGRAM, 17);
   if (inf->fd < 0) {
     inf->err_no = errno;
     fprintf(stderr, "setup_udp_client: socket failed: %s\n",
