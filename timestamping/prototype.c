@@ -45,10 +45,10 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   struct hwtstamp_config hw_config;
   memset(&hw_config, 0, sizeof(hw_config));
 
-  hw_config.tx_type = HWTSTAMP_TX_ON;
+  hw_config.tx_type = HWTSTAMP_TX_OFF;
 
   // Timestamping filter: (CAUTION: should be available as an option for the NIC)
-   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_L4_EVENT;
+   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V1_L4_EVENT;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
   char* interface_name = "eno1";
@@ -67,23 +67,13 @@ static int setup_udp_receiver(socket_info *inf, int port) {
      return ioctl_result;
    }
   /*--------------------------------------------------------------------*/
-  int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;;
+  int timestampOn = SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
       // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
       // SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
       // SOF_TIMESTAMPING_TX_HARDWARE |// SOF_TIMESTAMPING_RAW_HARDWARE |
       // SOF_TIMESTAMPING_OPT_TSONLY |
       // 0;
   
-  // SOL_SOCKET: I will use the explanation in the documentation to know what is this parameter.
-  //    The level argument specifies the protocol level at which the option resides..
-  //    To retrieve options at the socket level, specify the level argument as SOL_SOCKET.
-  //    To retrieve options at other levels, supply the appropriate protocol number for the
-  //    protocol controlling the option. For example, to indicate that an option will be 
-  //    interpreted by the TCP (Transport Control Protocol), set level to the protocol 
-  //    number of TCP, as defined in the <netinet/in.h> header, or as determined by using getprotobyname() function.
-  //
-  // SO_TIMESTAMPING: take a look at this link https://www.kernel.org/doc/html/latest/networking/timestamping.html.
-  // 
   int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
   if (r < 0) {
@@ -92,9 +82,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
             strerror(inf->err_no));
     return r;
   }
-  // allows multiple sockets on the same host to bind to the same port, and is 
-  // intended to improve the performance of multithreaded network server applications 
-  // running on top of multicore systems.
+  
   int on = 1;
   r = setsockopt(inf->fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof on);
   if (r < 0) {
@@ -103,7 +91,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
             strerror(inf->err_no));
     return r;
   }
-  // We are not binding socket to specific port. It can accept connections from all IPs.
+  
   inf->local = (struct sockaddr_in){.sin_family = AF_INET,
                                     .sin_port = htons((uint16_t)port),
                                     .sin_addr.s_addr = htonl(INADDR_ANY)};
@@ -172,8 +160,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
             strerror(inf->err_no));
     return r;
   }
-  // inet_aton() converts the Internet host address cp from the IPv4 numbers-and-dots
-  // notation into binary form (in network byte order) and stores it in the structure that inp points to.
+  
   inf->remote = (struct sockaddr_in){.sin_family = AF_INET,
                                      .sin_port = htons((uint16_t)port)};
   r = inet_aton(address, &inf->remote.sin_addr);
@@ -282,7 +269,6 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len) {
                                       .msg_namelen = sizeof inf->remote,
                                       .msg_iov = &iov,
                                       .msg_iovlen = 1};
-  // recvmsg is used to receive messages from a socket, and may be used to receive data on a socket whether or not it is connection-oriented.
   ssize_t recv_len = recvmsg(inf->fd, &msg, MSG_ERRQUEUE);
   if (recv_len < 0) {
     inf->err_no = errno;
