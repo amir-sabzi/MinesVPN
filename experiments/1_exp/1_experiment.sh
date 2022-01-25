@@ -19,7 +19,7 @@ terminate_moongen(){
 
 
 # Rates you want to test with:
-Rates=(100 1000 2000 4000 8000 16000 32000)
+Rates=(100 1000 2000 4000 8000 10000)
 
 
 echo "Experiment is started..."
@@ -31,10 +31,11 @@ for rate in ${Rates[@]}; do
     break
   fi
   terminate_moongen &
-  sudo ./build/MoonGen examples/l2-load-latency.lua 0 1 --rate "$rate"
-
+  sudo ./build/MoonGen examples/l3-load-latency.lua 0 1 --rate "$rate"
+  
+  log_name="hist_{$rate}Mbps_{$(date +"%Y-%m-%d_%I:%M-%p")}.csv"
   sleep 60
-  sudo mv histogram.csv histogram_{$rate}.csv
-  sudo mv histogram_{$rate}.csv ~/data/1-exp/10g-NIC/
+  sudo mv histogram.csv $log_name 
+  sudo mv $log_name  ~/data/1-exp/10g-NIC/l3/
   echo "Experiment for rate $rate has been performed successfully."
 done
