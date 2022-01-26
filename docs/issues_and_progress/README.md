@@ -31,9 +31,12 @@
 
 ## Meeting Tue 25 Jan
 ### Things that I've done so far:
-* Starting with the problems proposed in the last meeting, I could saturate both NICs with increasing packet size. However, I couldn't exactly reproduce their results. With only one core and packet_size = 128, I could increase rate about half of the figure in the MoonGen paper. I tried to dedicate more cores to MoonGen with ``taskset`` but It did not work. Reproducing their result is not important for us in this section of the project but it might come in handy in the future.
-* I performed the first experiment with the 10G NIC on the leap-417. I used a simple lan cable to connect ports together. the results are represnted in the colab.
-* I moved to the second experiment in which I tried to capture the time between transmission of two consequtive packets. It seems to work correctly but the wierd behavior is that majority of packets only have one nanosecond between two consequtive packets! I performed this experiment for four different rates=``100 1000 2000 4000`` and the histogram is available in the colab.
-* I started to look for the rate limiting functionalities of NICs. We discussed it with Aastha, and I tried to elaborate more on this but things are not clear to me. I should spend more time exploring code and documentation.
+* Starting with the problems proposed in the last meeting, I could saturate both NICs with increasing packet size. However, I couldn't exactly reproduce their results. With only one core and packet_size = 128, I could increase the rate by about half of the figure in the MoonGen paper. I tried to dedicate more cores to MoonGen with ``taskset`` but It did not work. Reproducing their result is not important for us in this section of the project but it might come in handy in the future.
+* I performed the first experiment with the 10G NIC on leap-417. I used a simple LAN cable to connect ports. the results are represented in the collab.
+* I moved to the second experiment in which I tried to capture the time between the transmission of two consecutive packets. It seems to work correctly but the weird behavior is that the majority of packets only have one nanosecond between two consecutive packets! I performed this experiment for four different rates=``100 1000 2000 4000`` and the histogram is available in the collab.
+* I started to look for the rate-limiting functionalities of NICs. We discussed it with Aastha, and I tried to elaborate more on this but things are not clear to me. I should spend more time exploring code and documentation.
 
 ### Things that we should discuss in the meeting:
+* analyzing the figures, especially the second experiment. 
+* Talking about the direction we want to pursue to find a way for the rate-limiting on the NIC.
+* Talking about the next step of the project and whether our results make sense considering our expectations.
