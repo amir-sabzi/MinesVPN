@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# In this file, I will investigate the effect of load on the time between packets.
+# In this experiment, I am measuring the interval delays using the built-in moongen script.
 # data should be used with a python script to be reprepsented as a histogram.
+
 # Test duration in seconds
 Test_duration=180
 
@@ -14,7 +15,7 @@ terminate_moongen(){
   echo "The process $T is killed"
 }
 
-
+data_dict=~/data/3-exp/10G-NIC/l3/
 
 # Rates you want to test with:
 Rates=(100 1000 2000 4000)
@@ -31,9 +32,13 @@ for rate in ${Rates[@]}; do
   terminate_moongen &
   sudo ./build/MoonGen examples/l3-load-latency.lua 0 1 --rate "$rate"
   
-  log_name="dist_{$rate}Mbps_{$(date +"%Y-%m-%d_%I:%M-%p")}.csv"
+  log_name="dist_${rate}Mbps_$(date +"%Y-%m-%d_%I:%M-%p").csv"
   sleep 60
-  awk -F "\"*,\"*" 'NR == 1{old = $1; next} {printf "%d%s %d\n", $1 - old, "," ,$2; old =$1;}'  histogram.csv | awk -F, '{a[$1]+=$2;}END{for(i in a)print i","a[i];}' > $log_name 
-  sudo mv $log_name  ~/data/2-exp/10g-NIC/l3/
+  ls $data_dict
+  if [$? -ne 0]; then
+    echo "The directory $data_dict hasn't created before. Creating directory..."
+    mkdir -p $data_dict
+  fi
+  sudo mv $log_name $data_dict 
   echo "Experiment for rate $rate has been performed successfully."
 done
