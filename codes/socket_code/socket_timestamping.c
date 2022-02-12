@@ -48,7 +48,7 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   hw_config.tx_type = HWTSTAMP_TX_ON;
 
   // Timestamping filter: (CAUTION: should be available as an option for the NIC)
-   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
+   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_L4_SYNC;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
   char* interface_name = "enp8s0f1";
@@ -79,12 +79,12 @@ static int setup_udp_receiver(socket_info *inf, int port) {
    }
    /*-----------------------------------------------------------------------*/
 
-  int timestampOn = // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
-       SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
+  int timestampOn =  SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
+       /*SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
        SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
        SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
        SOF_TIMESTAMPING_OPT_TSONLY |
-       0;
+       0;*/
   
   int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
