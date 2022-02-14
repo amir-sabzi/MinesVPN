@@ -330,10 +330,8 @@ static ssize_t generate_random_message(socket_info *inf, char *buf,
   }
   message_header *header = (message_header *)buf;
   char *payload = (char *)(header + 1);
-  size_t payload_len = (size_t)random() % (payload_max + 1);
-  if (payload_len > len - sizeof(message_header)) {
-    payload_len = len - sizeof(message_header);
-  }
+  size_t payload_len =len - sizeof(message_header);
+
   for (size_t i = 0; i < payload_len; i++) {
     payload[i] = (char)random();
   }
@@ -359,17 +357,17 @@ static ssize_t generate_random_message(socket_info *inf, char *buf,
   return (ssize_t)total;
 }
 
-static void sender_loop(char *host) {
+static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size) {
   socket_info inf;
+  // call to the setup sender with a pointer to socket_info struct to stablish the socket for us.
   int ret = setup_udp_sender(&inf, 8000, host);
   if (ret < 0) {
     return;
   }
 
-  for (int i = 0; i < 2000; i++) {
-    useconds_t t = random() % 2000000;
-    usleep(t);
-    char packet_buffer[4096];
+  for (int i = 0; i < packet_num; i++) {
+    usleep(soft_interval);
+    char packet_buffer[packet_size];
     ssize_t len =
         generate_random_message(&inf, packet_buffer, sizeof packet_buffer);
     if (len < 0) {
@@ -394,23 +392,26 @@ static void receiver_loop(void) {
   }
 }
 
-#define USAGE "Usage: %s [-r | -s host]\n"
+#define USAGE "Usage: %s [-r | -s]\n"
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    fprintf(stderr, USAGE, argv[0]);
-    return 0;
-  }
-
-  if (0 == strcmp(argv[1], "-s")) {
-    if (argc < 3) {
+  //TODO: fill the following sections.  
+  char* receiver_addr = "192.168.1.18";
+  int packet_size = 128;
+  // Number of packets to be sent
+  int packet_num = 1000;
+  // The value of interval time in microsecond
+  useconds_t interval_t = 100; 
+  if (argc == 2) {
+    if(strcmp(argv[1], "-s")==0){
+      sender_loop(receiver_addr, interval_t, packet_num, packet_size);
+    }else if (strcmp(argv[1], "-r")==0){
+      receiver_loop();
+    }else{
       fprintf(stderr, USAGE, argv[0]);
-      return 0;
-    }
-    sender_loop(argv[2]);
-  } else if (0 == strcmp(argv[1], "-r")) {
-    receiver_loop();
-  } else {
-    fprintf(stderr, USAGE, argv[0]);
+    } 
+  }else{
+   fprintf(stderr, USAGE, argv[0]);
   }
+  return 0;
 }
