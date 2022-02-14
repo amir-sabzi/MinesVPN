@@ -392,7 +392,7 @@ static void receiver_loop(void) {
   }
 }
 
-#define USAGE "Usage: %s [-r | -s]\n"
+#define USAGE "Usage: %s delay [-r | -s]\n"
 
 int main(int argc, char *argv[]) {
   //TODO: fill the following sections.  
@@ -401,11 +401,11 @@ int main(int argc, char *argv[]) {
   // Number of packets to be sent
   int packet_num = 1000;
   // The value of interval time in microsecond
-  useconds_t interval_t = 100; 
-  if (argc == 2) {
-    if(strcmp(argv[1], "-s")==0){
+  if (argc == 3) {
+    useconds_t interval_t = atoi(argv[1]); 
+    if(strcmp(argv[2], "-s")==0){
       sender_loop(receiver_addr, interval_t, packet_num, packet_size);
-    }else if (strcmp(argv[1], "-r")==0){
+    }else if (strcmp(argv[2], "-r")==0){
       receiver_loop();
     }else{
       fprintf(stderr, USAGE, argv[0]);
