@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define UDP_MAX_LENGTH 1500
 
@@ -79,12 +80,12 @@ static int setup_udp_receiver(socket_info *inf, int port) {
    }
    /*-----------------------------------------------------------------------*/
 
-  int timestampOn =  SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
-       /*SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
+  int timestampOn = // SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE;
+       SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_TX_SOFTWARE |
        SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_HARDWARE |
        SOF_TIMESTAMPING_TX_HARDWARE | SOF_TIMESTAMPING_RAW_HARDWARE |
        SOF_TIMESTAMPING_OPT_TSONLY |
-       0;*/
+       0;
   
   int r = setsockopt(inf->fd, SOL_SOCKET, SO_TIMESTAMPING, &timestampOn,
                      sizeof timestampOn);
@@ -206,14 +207,16 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
 // The structure can return up to three timestamps. This is a legacy
 // feature. Only one field is non-zero at any time. Most timestamps
 // are passed in ts[0]. Hardware timestamps are passed in ts[2].
-static void handle_scm_timestamping(struct scm_timestamping *ts) {
+static void handle_scm_timestamping(struct scm_timestamping *ts, FILE* fp) {
   for (size_t i = 0; i < sizeof ts->ts / sizeof *ts->ts; i++) {
+    fprintf(fp, "%lld.%.9lds", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec);
+    (i==2) ? fprintf(fp, "\n") : fprintf(fp, ",");
     printf("timestamp: %lld.%.9lds\n", (long long)ts->ts[i].tv_sec,
            ts->ts[i].tv_nsec);
   }
 }
 
-static void handle_time(struct msghdr *msg) {
+static void handle_time(struct msghdr *msg, FILE* fp) {
 
   for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(msg); cmsg;
        cmsg = CMSG_NXTHDR(msg, cmsg)) {
@@ -233,11 +236,11 @@ static void handle_time(struct msghdr *msg) {
     switch (cmsg->cmsg_type) {
     case SO_TIMESTAMPNS: {
       struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
-      handle_scm_timestamping(ts);
+      handle_scm_timestamping(ts, fp);
     } break;
     case SO_TIMESTAMPING: {
       struct scm_timestamping *ts = (struct scm_timestamping *)CMSG_DATA(cmsg);
-      handle_scm_timestamping(ts);
+      handle_scm_timestamping(ts, fp);
     } break;
     default:
       /* Ignore other cmsg options */
@@ -247,7 +250,7 @@ static void handle_time(struct msghdr *msg) {
   printf("End messages\n");
 }
 
-static ssize_t udp_receive(socket_info *inf, char *buf, size_t len) {
+static ssize_t udp_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
   char ctrl[2048];
   struct iovec iov = (struct iovec){.iov_base = buf, .iov_len = len};
   struct msghdr msg = (struct msghdr){.msg_control = ctrl,
@@ -265,7 +268,7 @@ static ssize_t udp_receive(socket_info *inf, char *buf, size_t len) {
             strerror(inf->err_no));
   }
 
-  handle_time(&msg);
+  handle_time(&msg, fp);
 
   return recv_len;
 }
@@ -286,7 +289,7 @@ static ssize_t udp_send(socket_info *inf, char *buf, size_t len) {
   return send_len;
 }
 
-static ssize_t meq_receive(socket_info *inf, char *buf, size_t len) {
+static ssize_t meq_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
   struct iovec iov = (struct iovec){.iov_base = buf, .iov_len = len};
   char ctrl[2048];
   struct msghdr msg = (struct msghdr){.msg_control = ctrl,
@@ -304,8 +307,7 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len) {
     }
     return recv_len;
   }
-  handle_time(&msg);
-
+  handle_time(&msg, fp);
   return recv_len;
 }
 
@@ -357,14 +359,14 @@ static ssize_t generate_random_message(socket_info *inf, char *buf,
   return (ssize_t)total;
 }
 
-static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size) {
+static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size, FILE* fp) {
   socket_info inf;
   // call to the setup sender with a pointer to socket_info struct to stablish the socket for us.
   int ret = setup_udp_sender(&inf, 8000, host);
   if (ret < 0) {
     return;
   }
-
+  bool b;
   for (int i = 0; i < packet_num; i++) {
     usleep(soft_interval);
     char packet_buffer[packet_size];
@@ -374,12 +376,12 @@ static void sender_loop(char *host, useconds_t soft_interval, int packet_num, in
       return;
     }
     udp_send(&inf, packet_buffer, (size_t)len);
-    while (meq_receive(&inf, packet_buffer, sizeof packet_buffer) != -1) {
+    while (meq_receive(&inf, packet_buffer, sizeof packet_buffer, fp) != -1) {
     }
   }
 }
 
-static void receiver_loop(void) {
+static void receiver_loop(FILE* fp) {
   socket_info inf;
   int ret = setup_udp_receiver(&inf, 8000);
   if (ret < 0) {
@@ -388,30 +390,39 @@ static void receiver_loop(void) {
 
   for (int i = 0; i < 1000; i++) {
     char packet_buffer[4096];
-    udp_receive(&inf, packet_buffer, sizeof packet_buffer);
+    udp_receive(&inf, packet_buffer, sizeof packet_buffer, fp);
   }
 }
 
-#define USAGE "Usage: %s delay [-r | -s]\n"
+#define USAGE "Usage: %s delay log [-r | -s]\n"
 
 int main(int argc, char *argv[]) {
-  //TODO: fill the following sections.  
+  char* log_path = argv[2];
   char* receiver_addr = "192.168.1.18";
-  int packet_size = 128;
+  int packet_size = 256;
   // Number of packets to be sent
-  int packet_num = 1000;
-  // The value of interval time in microsecond
-  if (argc == 3) {
+  int packet_num = 10000;
+
+  // Creating files for logging
+  FILE* fp;
+  fp = fopen(log_path, "w");
+  if (fp == NULL){
+        printf("Couldn't create/open file\n");
+        return 1;
+  }
+  if (argc == 4) {
+    // The value of interval time in microsecond
     useconds_t interval_t = atoi(argv[1]); 
-    if(strcmp(argv[2], "-s")==0){
-      sender_loop(receiver_addr, interval_t, packet_num, packet_size);
-    }else if (strcmp(argv[2], "-r")==0){
-      receiver_loop();
+    if(strcmp(argv[3], "-s")==0){
+      sender_loop(receiver_addr, interval_t, packet_num, packet_size, fp);
+    }else if (strcmp(argv[3], "-r")==0){
+      receiver_loop(fp);
     }else{
       fprintf(stderr, USAGE, argv[0]);
     } 
   }else{
    fprintf(stderr, USAGE, argv[0]);
   }
+  fclose(fp);
   return 0;
 }
