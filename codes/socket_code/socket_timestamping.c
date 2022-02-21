@@ -17,6 +17,10 @@
 #include <stdbool.h>
 
 #define UDP_MAX_LENGTH 1500
+#define LOG_ARRAY_SIZE 100
+long long log_array [LOG_ARRAY_SIZE][6];
+int log_counter = 0;
+
 
 typedef struct {
   int fd;
@@ -49,10 +53,10 @@ static int setup_udp_receiver(socket_info *inf, int port) {
   hw_config.tx_type = HWTSTAMP_TX_ON;
 
   // Timestamping filter: (CAUTION: should be available as an option for the NIC)
-   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_L4_SYNC;
+   hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
-  char* interface_name = "enp8s0f1";
+  char* interface_name = "enp66s0f1";
   
   struct ifreq hwtstamp;
   memset(&hwtstamp, 0, sizeof(hwtstamp));
@@ -142,7 +146,7 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
    hw_config.rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
   
   // Interface Name: (CAUTION: consider changing the rx_filter when you change Interface)
-  char* interface_name = "enp8s0f1";
+  char* interface_name = "enp66s0f1";
   
   struct ifreq hwtstamp;
   memset(&hwtstamp, 0, sizeof(hwtstamp));
@@ -210,24 +214,27 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
 // are passed in ts[0]. Hardware timestamps are passed in ts[2].
 static void handle_scm_timestamping(struct scm_timestamping *ts, FILE* fp) {
   for (size_t i = 0; i < sizeof ts->ts / sizeof *ts->ts; i++) {
-    fprintf(fp, "%lld.%.9lds", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec);
+    log_array[log_counter][2*i] = (long long)ts -> ts[i].tv_sec;
+    log_array[log_counter][2*i + 1] = (long long)ts -> ts[i].tv_nsec;
+    /*fprintf(fp, "%lld.%.9lds", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec);
     (i==2) ? fprintf(fp, "\n") : fprintf(fp, ",");
-    printf("timestamp: %lld.%.9lds\n", (long long)ts->ts[i].tv_sec,
-           ts->ts[i].tv_nsec);
+     printf("timestamp: %lld.%.9lds; %ld\n", (long long)ts->ts[i].tv_sec,
+           ts->ts[i].tv_nsec, ts->ts[i].tv_nsec);
+    */
   }
+  log_counter ++;
 }
 
 static void handle_time(struct msghdr *msg, FILE* fp) {
 
   for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(msg); cmsg;
        cmsg = CMSG_NXTHDR(msg, cmsg)) {
-    printf("level=%d, type=%d, len=%zu\n", cmsg->cmsg_level, cmsg->cmsg_type,
-           cmsg->cmsg_len);
+    //printf("level=%d, type=%d, len=%zu\n", cmsg->cmsg_level, cmsg->cmsg_type, cmsg->cmsg_len);
 
     if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
       struct sock_extended_err *ext =
           (struct sock_extended_err *)CMSG_DATA(cmsg);
-      printf("errno=%d, origin=%d\n", ext->ee_errno, ext->ee_origin);
+     // printf("errno=%d, origin=%d\n", ext->ee_errno, ext->ee_origin);
       continue;
     }
 
@@ -248,7 +255,7 @@ static void handle_time(struct msghdr *msg, FILE* fp) {
       break;
     }
   }
-  printf("End messages\n");
+  // printf("End messages\n");
 }
 
 static ssize_t udp_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
@@ -312,55 +319,8 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
   return recv_len;
 }
 
-typedef struct {
-  int64_t serialnum;
 
-  int64_t user_time_serialnum;
-  int64_t user_time;
-
-  int64_t kernel_time_serialnum;
-  int64_t kernel_time;
-
-  size_t message_bytes;
-} message_header;
-
-static const size_t payload_max = UDP_MAX_LENGTH - sizeof(message_header);
-
-static ssize_t generate_random_message(socket_info *inf, char *buf,
-                                       size_t len) {
-  if (len < sizeof(message_header)) {
-    return -1;
-  }
-  message_header *header = (message_header *)buf;
-  char *payload = (char *)(header + 1);
-  size_t payload_len =len - sizeof(message_header);
-
-  for (size_t i = 0; i < payload_len; i++) {
-    payload[i] = (char)random();
-  }
-
-  static int64_t serial_num = 0;
-  *header = (message_header){
-      .user_time_serialnum = inf->prev_serialnum,
-      .user_time = inf->time_user.tv_sec * 1000000000L + inf->time_user.tv_usec,
-      .kernel_time_serialnum = inf->prev_serialnum,
-      .kernel_time =
-          inf->time_kernel.tv_sec * 1000000000L + inf->time_kernel.tv_usec,
-      .serialnum = serial_num,
-      .message_bytes = payload_len};
-  size_t total = payload_len + sizeof *header;
-
-  printf("uts%5" PRId64 ": kt=%" PRId64 ", ut=%" PRId64 ", sn=%" PRId64
-         ": s=%zu\n",
-         header->user_time_serialnum, header->kernel_time, header->user_time,
-         header->serialnum, total);
-
-  inf->prev_serialnum = serial_num++;
-
-  return (ssize_t)total;
-}
-
-static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size, FILE* fp) {
+static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size,  FILE* fp, char* packet_buffer) {
   socket_info inf;
   // call to the setup sender with a pointer to socket_info struct to stablish the socket for us.
   int ret = setup_udp_sender(&inf, 8000, host);
@@ -370,13 +330,7 @@ static void sender_loop(char *host, useconds_t soft_interval, int packet_num, in
   bool b;
   for (int i = 0; i < packet_num; i++) {
     usleep(soft_interval);
-    char packet_buffer[packet_size];
-    ssize_t len =
-        generate_random_message(&inf, packet_buffer, sizeof packet_buffer);
-    if (len < 0) {
-      return;
-    }
-    udp_send(&inf, packet_buffer, (size_t)len);
+    udp_send(&inf, packet_buffer, (size_t)packet_size);
     while (meq_receive(&inf, packet_buffer, sizeof packet_buffer, fp) != -1) {
     }
   }
@@ -400,9 +354,15 @@ static void receiver_loop(FILE* fp) {
 int main(int argc, char *argv[]) {
   char* log_path = argv[2];
   char* receiver_addr = "192.168.1.18";
-  int packet_size = 256;
+  // Packet size
+  int packet_size = 1024;
+  
+  // Here we create a constant payload for all packets
+  char* payload;
+  payload = (char*) malloc(packet_size * sizeof(char));
+  memset(payload, 'A', packet_size);
   // Number of packets to be sent
-  int packet_num = 10000;
+  int packet_num = 100;
 
   // Creating files for logging
   FILE* fp;
@@ -415,7 +375,7 @@ int main(int argc, char *argv[]) {
     // The value of interval time in microsecond
     useconds_t interval_t = atoi(argv[1]); 
     if(strcmp(argv[3], "-s")==0){
-      sender_loop(receiver_addr, interval_t, packet_num, packet_size, fp);
+      sender_loop(receiver_addr, interval_t, packet_num, packet_size, fp, payload);
     }else if (strcmp(argv[3], "-r")==0){
       receiver_loop(fp);
     }else{
@@ -423,6 +383,11 @@ int main(int argc, char *argv[]) {
     } 
   }else{
    fprintf(stderr, USAGE, argv[0]);
+  }
+  for(int i=0;i<LOG_ARRAY_SIZE;i++){
+    for (int j=0; j<3; j++){
+      (j==2) ? fprintf(fp, "%lld%lld\n",log_array[i][2*j], log_array[i][2*j+1]) : fprintf(fp, "%lld%lld,",log_array[i][2*j], log_array[i][2*j+1]);
+    }
   }
   fclose(fp);
   return 0;
