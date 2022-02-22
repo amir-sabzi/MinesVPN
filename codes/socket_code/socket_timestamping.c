@@ -17,7 +17,7 @@
 #include <stdbool.h>
 
 #define UDP_MAX_LENGTH 1500
-#define LOG_ARRAY_SIZE 100
+#define LOG_ARRAY_SIZE 10000
 long long log_array [LOG_ARRAY_SIZE][6];
 int log_counter = 0;
 
@@ -220,7 +220,8 @@ static void handle_scm_timestamping(struct scm_timestamping *ts, FILE* fp) {
     (i==2) ? fprintf(fp, "\n") : fprintf(fp, ",");
      printf("timestamp: %lld.%.9lds; %ld\n", (long long)ts->ts[i].tv_sec,
            ts->ts[i].tv_nsec, ts->ts[i].tv_nsec);
-    */
+     */
+    
   }
   log_counter ++;
 }
@@ -355,14 +356,14 @@ int main(int argc, char *argv[]) {
   char* log_path = argv[2];
   char* receiver_addr = "192.168.1.18";
   // Packet size
-  int packet_size = 1024;
+  int packet_size = 128;
   
   // Here we create a constant payload for all packets
   char* payload;
   payload = (char*) malloc(packet_size * sizeof(char));
   memset(payload, 'A', packet_size);
   // Number of packets to be sent
-  int packet_num = 100;
+  int packet_num = 10000;
 
   // Creating files for logging
   FILE* fp;
@@ -390,5 +391,6 @@ int main(int argc, char *argv[]) {
     }
   }
   fclose(fp);
+  printf("%d\n",log_counter);
   return 0;
 }
