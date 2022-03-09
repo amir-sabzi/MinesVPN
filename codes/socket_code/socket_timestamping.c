@@ -16,20 +16,29 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define UDP_MAX_LENGTH 1500
-#define LOG_ARRAY_SIZE 10000
-long long log_array [LOG_ARRAY_SIZE][6];
-int log_counter = 0;
 
+#define NIC_QUEUE_SIZE 4096
+#define UDP_MAX_LENGTH 1500
+#define LOG_ARRAY_SIZE 5000000
+long long log_hw_sec [LOG_ARRAY_SIZE][3];
+long log_hw_nsec [LOG_ARRAY_SIZE][3];
+
+int64_t log_sw_usec [LOG_ARRAY_SIZE][3];
+int log_hw_counter = 0;
+int log_sw_counter = 0;
+int pause_count = 0;
 
 typedef struct {
   int fd;
   int port;
   int err_no;
   struct sockaddr_in local;
+  long last_send;
+  long  last_ack;
   struct sockaddr_in remote;
-  struct timeval time_kernel;
-  struct timeval time_user;
+  struct timeval time_before_send;
+  struct timeval time_after_ack;
+  struct timeval time_after_send;
   int64_t prev_serialnum;
 } socket_info;
 
@@ -214,16 +223,15 @@ static int setup_udp_sender(socket_info *inf, int port, char *address) {
 // are passed in ts[0]. Hardware timestamps are passed in ts[2].
 static void handle_scm_timestamping(struct scm_timestamping *ts, FILE* fp) {
   for (size_t i = 0; i < sizeof ts->ts / sizeof *ts->ts; i++) {
-    log_array[log_counter][2*i] = (long long)ts -> ts[i].tv_sec;
-    log_array[log_counter][2*i + 1] = (long long)ts -> ts[i].tv_nsec;
-    /*fprintf(fp, "%lld.%.9lds", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec);
-    (i==2) ? fprintf(fp, "\n") : fprintf(fp, ",");
-     printf("timestamp: %lld.%.9lds; %ld\n", (long long)ts->ts[i].tv_sec,
-           ts->ts[i].tv_nsec, ts->ts[i].tv_nsec);
-     */
+    log_hw_sec[log_hw_counter][i] = (long long)ts -> ts[i].tv_sec;
+    log_hw_nsec[log_hw_counter][i] = ts -> ts[i].tv_nsec;
+    //fprintf(fp, "%lld.%.9lds", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec);
+    //(i==2) ? fprintf(fp, "\n") : fprintf(fp, ",");
+    // printf("timestamp: %lld.%.9lds; %ld\n", (long long)ts->ts[i].tv_sec, ts->ts[i].tv_nsec, ts->ts[i].tv_nsec);
+     
     
   }
-  log_counter ++;
+  log_hw_counter ++;
 }
 
 static void handle_time(struct msghdr *msg, FILE* fp) {
@@ -288,13 +296,15 @@ static ssize_t udp_send(socket_info *inf, char *buf, size_t len) {
                                       .msg_namelen = sizeof inf->remote,
                                       .msg_iov = &iov,
                                       .msg_iovlen = 1};
-  gettimeofday(&inf->time_user, NULL);
+  gettimeofday(&inf->time_before_send, NULL);
   ssize_t send_len = sendmsg(inf->fd, &msg, 0);
   if (send_len < 0) {
     inf->err_no = errno;
     fprintf(stderr, "udp_send: sendmsg failed: %s\n", strerror(inf->err_no));
+  }else{
+    gettimeofday(&inf->time_after_send, NULL);
   }
-
+  inf->last_send ++;
   return send_len;
 }
 
@@ -308,6 +318,7 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
                                       .msg_iov = &iov,
                                       .msg_iovlen = 1};
   ssize_t recv_len = recvmsg(inf->fd, &msg, MSG_ERRQUEUE);
+  //printf("recv_len: %d\n", (int)recv_len);
   if (recv_len < 0) {
     inf->err_no = errno;
     if (errno != EAGAIN) {
@@ -317,12 +328,15 @@ static ssize_t meq_receive(socket_info *inf, char *buf, size_t len, FILE* fp) {
     return recv_len;
   }
   handle_time(&msg, fp);
+  inf->last_ack ++;
   return recv_len;
 }
 
 
 static void sender_loop(char *host, useconds_t soft_interval, int packet_num, int packet_size,  FILE* fp, char* packet_buffer) {
   socket_info inf;
+  inf.last_ack = 0;
+  inf.last_send = 0;
   // call to the setup sender with a pointer to socket_info struct to stablish the socket for us.
   int ret = setup_udp_sender(&inf, 8000, host);
   if (ret < 0) {
@@ -331,9 +345,21 @@ static void sender_loop(char *host, useconds_t soft_interval, int packet_num, in
   bool b;
   for (int i = 0; i < packet_num; i++) {
     usleep(soft_interval);
+    if(inf.last_send - inf.last_ack >= NIC_QUEUE_SIZE){
+      pause_count++;
+      continue;
+    }
     udp_send(&inf, packet_buffer, (size_t)packet_size);
     while (meq_receive(&inf, packet_buffer, sizeof packet_buffer, fp) != -1) {
     }
+  gettimeofday(&inf.time_after_ack, NULL);
+
+  log_sw_usec[log_sw_counter][0] = inf.time_before_send.tv_sec * 1000000000L + inf.time_before_send.tv_usec;
+  log_sw_usec[log_sw_counter][1] = inf.time_after_send.tv_sec * 1000000000L + inf.time_after_send.tv_usec;
+  log_sw_usec[log_sw_counter][2] = inf.time_after_ack.tv_sec * 1000000000L + inf.time_after_ack.tv_usec;
+  log_sw_counter++;
+  // printf("last_send: %ld\n", inf.last_send);
+  // printf("last_ack: %ld\n", inf.last_ack);
   }
 }
 
@@ -356,14 +382,14 @@ int main(int argc, char *argv[]) {
   char* log_path = argv[2];
   char* receiver_addr = "192.168.1.18";
   // Packet size
-  int packet_size = 128;
+  int packet_size = 512;
   
   // Here we create a constant payload for all packets
   char* payload;
   payload = (char*) malloc(packet_size * sizeof(char));
   memset(payload, 'A', packet_size);
   // Number of packets to be sent
-  int packet_num = 10000;
+  int packet_num = 5000000;
 
   // Creating files for logging
   FILE* fp;
@@ -387,10 +413,15 @@ int main(int argc, char *argv[]) {
   }
   for(int i=0;i<LOG_ARRAY_SIZE;i++){
     for (int j=0; j<3; j++){
-      (j==2) ? fprintf(fp, "%lld%lld\n",log_array[i][2*j], log_array[i][2*j+1]) : fprintf(fp, "%lld%lld,",log_array[i][2*j], log_array[i][2*j+1]);
+      fprintf(fp, "%lld%.9ld,",log_hw_sec[i][j], log_hw_nsec[i][j]);
+    }
+    for (int j=0; j<3; j++){
+      (j==2) ? fprintf(fp,"%" PRId64 "\n", log_sw_usec[i][j]) : fprintf(fp, "%" PRId64 ",", log_sw_usec[i][j]);
     }
   }
   fclose(fp);
-  printf("%d\n",log_counter);
+  printf("Number of hw-ts packets: %d\n", log_hw_counter);
+  printf("Number of sw-ts packets: %d\n", log_sw_counter);
+  printf("Number of pauses: %d\n", pause_count);
   return 0;
 }
