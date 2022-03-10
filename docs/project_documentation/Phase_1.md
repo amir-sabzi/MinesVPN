@@ -18,7 +18,7 @@ The detailed results are accessible through this [link](https://github.com/ubc-s
 Description:\
 In this experiment, we modified the timestamping [lua file](https://github.com/ubc-systopia/MoonGen-1/blob/master/libmoon/lua/interval_timestamping.lua) in libmoon project to calculate the inter-packet delays. In other words, we want to measure the time between tranmission of two consecutive packets. For both of available NICs, we generate packets with rates of (100Mbps, 1Gbps, 2Gbps, 4Gbps, 8Gbps) and then measure the intervals for packets at sender side. This means for each pair of packets transmitted consecutively, we calculate ``ts_{i+1} - ts_{i}``.
 
-Expectation:\ 
+Expectation:\
 If NIC enforces the constant bit-rate (CBR) accurately, we expect to have constant, equal inter-arrival times for all packets leading to a completely constant rate of traffic.
 
 Results:\
@@ -27,9 +27,13 @@ The results are available [here](https://github.com/ubc-systopia/minesvpn-benchm
 ### Experiment 3
 This experiment was designed to investigate potential reasons for having extremely small intervals in MoonGen packet generation. We tried multiple things and here I will list our findings.
 
-* Batch size: DPDK sends packets in form of batches to increase the overall throughput. We assumed that sending packets in batches might lead to short intervals between packets in the same batch. To address this problem, we decreased the batch size to 1 packet per batch. There was no changes in final result. 
-* Sampled timestamping: We realized that MoonGen doesn't timestamps all of the packets. It establishes two different queues and send packets without timestamp in one of them and timestamped packets, with lower rate, in the other one. This way of timestamping packets prevent us from calculating the accurate inter-arival times. However, this method should lead to higher delays compared to a situation in which we timestamp all packets. Surprisingly, this change neither decrease the inter-arrival times nor increase them.
-* Limiting the software rate: We even went further and tried to limit the rate of packet generation in the software by adding delay inside the loop that generates packets in the lua code. Even this change didn't solve the problem! We end up considering this behavior as a bug/misconfiguration of MoonGen.
+* **Batch size**: DPDK sends packets in form of batches to increase the overall throughput. We assumed that sending packets in batches might lead to short intervals between packets in the same batch. To address this problem, we decreased the batch size to 1 packet per batch. There was no changes in final result. 
+* **Sampled timestamping**: We realized that MoonGen doesn't timestamps all of the packets. It establishes two different queues and send packets without timestamp in one of them and timestamped packets, with lower rate, in the other one. This way of timestamping packets prevent us from calculating the accurate inter-arival times. However, this method should lead to higher delays compared to a situation in which we timestamp all packets. Surprisingly, this change neither decrease the inter-arrival times nor increase them.
+* **Limiting the software rate**: We even went further and tried to limit the rate of packet generation in the software by adding delay inside the loop that generates packets in the lua code. Even this change didn't solve the problem! We end up considering this behavior as a bug/misconfiguration of MoonGen.
 
-### Experiment 4
+### Experiments 4 and 5
+Description:\
+To timestamp packets from userspace, I wrote a [C script](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/socket_code/socket_timestamping.c). In this script I generate packets in a sender-loop, timestamp them, and send them with a modifiable inter-arrival times at the software. In these experiments, I tried a set of values for inter-arrival times in the code and measured the intervals based on the hardware timestamps. This enables us to accurately measure the NIC behavior in terms of managing packets in its queues. To study the NIC behavior, we set a value in microsecond as the interval between two packet generated in the userspace. Then, we measure the intervals based on hardware timestamps provided by the NIC. We calculate the average, standard deviation, and drift from software intervals for these packets. To have a reliable data, we repeated each experiment 5 times and reported average of mean, std, and drift as the final value.
 
+Expectations:\
+At the low rates, we expect the NIC to send packets immidiately after they placed inside its queues. As a result, the time between two packets generated inside the loop in the software shoud be almost equal with the time between two consecutive packets transmitted by the NIC. Besides that, 
