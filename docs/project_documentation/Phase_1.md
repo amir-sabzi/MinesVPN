@@ -35,7 +35,7 @@ This experiment was designed to investigate potential reasons for having extreme
 Description:\
 To timestamp packets from userspace, I wrote a [C script](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/socket_code/socket_timestamping.c). In this script I generate packets in a sender-loop, timestamp them, and send them with modifiable inter-arrival times at the software. In these experiments, I tried a set of values for inter-arrival times in the code and measured the intervals based on the hardware timestamps. This enables us to accurately measure the NIC behavior in terms of managing packets in its queues. To study the NIC behavior, we set a value in microseconds as the interval between two packets generated in the userspace. Then, we measure the intervals based on hardware timestamps provided by the NIC. We calculate the average, standard deviation, and drift of intervals compared to software intervals for these packets. To have reliable data, we repeated each experiment 5 times and reported the average of mean, std, and drift as the final value.
 
-To see the effect of the NIC rate limiting on the inter-arrival times of packets, we repeat the same experiment by using the following command to enforce a rate of 100Mbps by changing the link mode.
+To see the effect of the NIC rate limiting on the inter-arrival times of packets, in the 5th experiment, we repeated the same experiment by using the following command to enforce a rate of 100Mbps by changing the link mode.
 ```
 sudo ethtool -s enp66s0f1 speed 100 duplex full autoneg on
 ```
@@ -45,4 +45,16 @@ Expectations:\
 At the low rates, we expect the NIC to send packets immediately after they are placed inside its queues. As a result, the time between two packets generated inside the loop in the software should be almost equal to the time between two consecutive packets transmitted by the NIC. Besides that, if avoid saturating the NIC queues, we expect to observe low variations in intervals.
 
 Results:\
-You can find the result [here]() and [here](). TODO: summarize the result.
+You can find the result of experiment 4 here. [here](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/data_analysis/4_experiment.ipynb) and the revised version for that with more information [here](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/data_analysis/5_and_more_experiment.ipynb). As you can see, if we decrease the software interval lower than 100 us, the interval of packets timestamped by the NIC will aren't smaller than 124 us. This means either NIC cannot transmit packets faster than 10Kpps or our software loop cannot generate packets at a faster rate. To find the reason for this problem we added timestamps inside the code. **TODO**: a result of this section.
+
+In the 5th experiment, we changed the NIC rate-limiting functionality by changing the NIC link mode. The results are available [here](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/data_analysis/5_and_more_experiment.ipynb). When we add rate-limiting functionality, especially at low rates, we have a huge deviation in inter-arrival times for packets. The reason behind this behavior is unknown to us but at least we can say limiting the rate by changing the NIC mode is not reliable at all.
+
+### Experiment with programmable switches.
+Description:\
+Having the results of the first three experiments, we realized that MoonGen is not a reliable tool to extract the timestamps of packets. To find out whether we can rely on MoonGen for traffic generation or not, we decided to generate packets with MoonGen, and timestamp them on the programmable switch. This model is very close to eavesdropper observation inside the network. We divided the traffic into variable-size windows based on the number of packets, and transmission times. We calculated the rate of traffic inside each window. 
+
+Expectation:\
+If MoonGen manages to enforce traffic rate correctly, In an ideal case, we expect to see a constant bit rate even in small windows. Actually, the smallest window size that can provide an almost constant rate during the whole time of transmission, can be considered as the NIC's highest resolution for imposing rate-limiting functionality.
+
+Results:\
+Results are available [here](). **TODO** summarize the results.
