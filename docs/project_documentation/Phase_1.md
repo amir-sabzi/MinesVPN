@@ -16,11 +16,20 @@ The detailed results are accessible through this [link](https://github.com/ubc-s
 
 ### Experiment 2
 Description:\
-In this experiment, we modified the timestamping [lua file](https://github.com/ubc-systopia/MoonGen-1/blob/master/libmoon/lua/interval_timestamping.lua) in libmoon project. Using this file, we can calculate the inter-packet delays. In other words, we want to measure the time between tranmission of two consecutive packets. 
+In this experiment, we modified the timestamping [lua file](https://github.com/ubc-systopia/MoonGen-1/blob/master/libmoon/lua/interval_timestamping.lua) in libmoon project to calculate the inter-packet delays. In other words, we want to measure the time between tranmission of two consecutive packets. For both of available NICs, we generate packets with rates of (100Mbps, 1Gbps, 2Gbps, 4Gbps, 8Gbps) and then measure the intervals for packets at sender side. This means for each pair of packets transmitted consecutively, we calculate ``ts_{i+1} - ts_{i}``.
 
 Expectation:\ 
-If NIC enforces the constant bit-rate (CBR) accurately, we expect to have constant, equal inter-arrival times for all packets leading to a pure constant rate of traffic.
+If NIC enforces the constant bit-rate (CBR) accurately, we expect to have constant, equal inter-arrival times for all packets leading to a completely constant rate of traffic.
 
 Results:\
-The results are available [here](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/data_analysis/1_2_experiment.ipynb).
+The results are available [here](https://github.com/ubc-systopia/minesvpn-benchmarking/blob/main/codes/data_analysis/1_2_experiment.ipynb). Based on this result, we have majority of packets with intervals as small as 1ns. Considering the fact that our NIC have the resolution of 6.4ns for timestamping packets, this small numbers are not valid. This means either NIC is sending packets in bursts with rate higher than the rate enforced by MoonGen, or timestamps are not correct. To investigate the potential reasons for this observation, we designed the 3rd experiment.
+
+### Experiment 3
+This experiment was designed to investigate potential reasons for having extremely small intervals in MoonGen packet generation. We tried multiple things and here I will list our findings.
+
+* Batch size: DPDK sends packets in form of batches to increase the overall throughput. We assumed that sending packets in batches might lead to short intervals between packets in the same batch. To address this problem, we decreased the batch size to 1 packet per batch. There was no changes in final result. 
+* Sampled timestamping: We realized that MoonGen doesn't timestamps all of the packets. It establishes two different queues and send packets without timestamp in one of them and timestamped packets, with lower rate, in the other one. This way of timestamping packets prevent us from calculating the accurate inter-arival times. However, this method should lead to higher delays compared to a situation in which we timestamp all packets. Surprisingly, this change neither decrease the inter-arrival times nor increase them.
+* Limiting the software rate: We even went further and tried to limit the rate of packet generation in the software by adding delay inside the loop that generates packets in the lua code. Even this change didn't solve the problem! We end up considering this behavior as a bug/misconfiguration of MoonGen.
+
+### Experiment 4
 
