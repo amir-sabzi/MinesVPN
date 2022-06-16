@@ -50,4 +50,4 @@ sudo virt-install \
   --network bridge=virbr0,model=virtio \
   --graphics none \
   --extra-args='console=ttyS0,115200n8 serial' 
-```l
+```
