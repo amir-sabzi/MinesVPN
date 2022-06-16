@@ -41,13 +41,13 @@ sudo virt-install \
 
 **Public Component specification**
 ```
-sudo virt-install \
-  --name PublicComponent \
-  --os-variant ubuntu20.04 \ 
-  --vcpus 4 \
+sudo virt-install\
+  --name PublicComponent\
+  --os-variant ubuntu20.04\ 
+  --vcpus 4\
   --ram 24576\ 
-  --location http://ftp.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/ \
-  --network bridge=virbr0,model=virtio \
-  --graphics none \
+  --location http://ftp.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/\
+  --network bridge=virbr0,model=virtio\
+  --graphics none\
   --extra-args='console=ttyS0,115200n8 serial' 
 ```
