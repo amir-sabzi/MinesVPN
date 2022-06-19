@@ -90,6 +90,10 @@ virsh net-edit new
 <add empty lines to the end of this file>
 <save>
 ```
+Before moving to the next part, make sure you have restarted the libvirtd with the following command.
+```
+sudo systemctl restrart libvirtd
+```
 5. Now you have your new virtual netowrk ready. If you haven't create a VM yet, when configuring it, make sure to assign it to the new network by changing its network configuration:
 ```
 sudo virt-install \ 
@@ -98,12 +102,22 @@ sudo virt-install \
 ...
 ```
 If you created your VM before, and you want to change its virtual netowrk, VM configuration file should be modified.
-
 ```
 virsh edit <VM Name>
 ```
+In this file, search for interface name and chanage it to the name of interface in the new network configuration.
+## IP addresses of all components 
+We have two components on each machine, called isolated and public repectively.
+To perform the initial testing and experiments, we are going to use following addresses for different components.
+* Leap-417 (Middle box 1)
+  * Isolated Component IP: 192.168.123.231
+  * Public Component IP: 192.168.122.199
+* Leap-418 (Middle box 2)
+  * Isolated Component IP: 192.168.121.79
+  * Public Component IP: 192.168.120.192
 
-## IP address of all components 
-
-
-
+The username and password for all components for ssh connection are:
+```
+username: minesvpn
+pass: minesvpn
+```
