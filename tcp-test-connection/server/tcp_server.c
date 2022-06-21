@@ -1,3 +1,5 @@
+#include <fcntl.h> // for open
+#include <unistd.h> // for close
 #include <stdio.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -5,10 +7,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
 
 #define MAX_BUFF 1000
 #define PORT 8080
-#define IP "127.0.0.1"
+#define IP "10.34.15.5"
 #define SA struct sockaddr
 
 
@@ -34,7 +37,7 @@ int main(void){
   // Setting IP and Port for the server socket
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(PORT);
-  server_addr.sin_addr.s_addr(IP);
+  server_addr.sin_addr.s_addr = inet_addr(IP);
 
   // Binding the socket to the pair of IP and Port
   if(bind(sock_server, (struct sockaddr*)&server_addr, sizeof(server_addr))<0){
@@ -70,7 +73,7 @@ int main(void){
   strcpy(server_message, "Hello, client!");
   if(send(sock_client, server_message, strlen(server_message), 0) < 0){
     printf("Error while sending message to the client!\n");
-    return -1
+    return -1;
   } 
   printf("message has been sent to the client.\n");
 

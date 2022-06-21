@@ -1,14 +1,17 @@
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define MAX_BUFF 1000
 #define PORT 8080
-#define IP "127.0.0.1"
+#define IP "10.34.15.5"
 #define SA struct sockaddr
 
 
@@ -34,14 +37,14 @@ int main(void){
   // Setting IP and Port for the server socket
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(PORT);
-  server_addr.sin_addr.s_addr(IP);
+  server_addr.sin_addr.s_addr = inet_addr(IP);
 
   // Connecting to the server with defined address
   if(connect(sock_client, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
     printf("Error while trying to connect to the server!\n");
     return -1;
   }
-  printf("Connection to the server has been established.");
+  printf("Connection to the server has been established.\n");
 
   //Sending a message to the server
   strcpy(client_message, "Hello, server!\n");
